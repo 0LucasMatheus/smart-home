@@ -78,7 +78,7 @@
       "top": -87.2,
       "left": -17.8,
       "rotate": 270,
-      "attrs": { "color": "#20e67c20" }
+      "attrs": { "color": "#20e67c00" }
     },
     {
       "type": "wokwi-resistor",
