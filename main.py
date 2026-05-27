@@ -93,7 +93,7 @@ def conectar_wifi(nome, senha):
 conectar_wifi("Wokwi-GUEST", "")
 
 
-########## rtc
+########## rtc relogio
 
 import ntptime
 
