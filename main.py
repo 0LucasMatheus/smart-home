@@ -93,6 +93,45 @@ def conectar_wifi(nome, senha):
 conectar_wifi("Wokwi-GUEST", "")
 
 
+########## rtc
+
+import ntptime
+
+fuso_brasil = -3
+
+def sincronizar_rtc():
+    ntptime.settime()
+    ano, mes, dia, hora, minuto, segundo, semana, dia_do_ano = time.localtime()
+    hora = hora + fuso_brasil
+    rtc.datetime = (ano, mes, dia, semana, hora, minuto, segundo, 0)
+    print("rtc sincronizado")
+
+def ler_hora():
+    return rtc.datetime[4]
+
+def ler_minuto():
+    return rtc.datetime[5]
+
+def ler_segundo():
+    return rtc.datetime[6]
+
+def mostrar_hora():
+    hora = ler_hora()
+    minuto = ler_minuto()
+    segundo = ler_segundo()
+    hora_str = f"{hora:02d}:{minuto:02d}:{segundo:02d}"
+    return hora_str
+
+
+
+sincronizar_rtc()
+print("hora:", ler_hora())
+print("minuto:", ler_minuto())
+print("segundo:", ler_segundo())
+print("hora formatada:", mostrar_hora())
+
+
+
 
 ################################# funcoes sensores
 
