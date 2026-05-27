@@ -47,7 +47,7 @@ ldr.atten(ADC.ATTN_11DB)
 sinalVermelho = Pin(sinalVermelho_pin, Pin.IN)
 
 # atuadores
-buzzer = PWM(Pin(buzzer_pin), freq=440)
+buzzer = PWM(Pin(buzzer_pin))
 buzzer.duty(0)
 
 rele = Pin(rele_pin, Pin.OUT)
@@ -77,7 +77,26 @@ lcd = GpioLcd(
     num_columns=16
 )
 
-# IR - infravermelho
+########## wifi
+
+import network
+
+def conectar_wifi(nome, senha):
+    wifi = network.WLAN(network.STA_IF)
+    wifi.active(True)
+    wifi.connect(nome, senha)
+    print("conectando ao wifi...")
+    while not wifi.isconnected():
+        time.sleep(0.5)
+    print("conectado:", wifi.ifconfig()[0])
+
+conectar_wifi("Wokwi-GUEST", "")
+
+
+
+################################# funcoes sensores
+
+########## sensor IR - infravermelho
 
 ultimo_sinalVermelho = None
 
@@ -95,20 +114,12 @@ def ler_sinalVermelho():
     return cmd
 
 
-########## wifi
+########## sensor de luz (ldr)
 
-import network
-
-def conectar_wifi(nome, senha):
-    wifi = network.WLAN(network.STA_IF)
-    wifi.active(True)
-    wifi.connect(nome, senha)
-    print("conectando ao wifi...")
-    while not wifi.isconnected():
-        time.sleep(0.5)
-    print("conectado:", wifi.ifconfig()[0])
-
-conectar_wifi("Wokwi-GUEST", "")
+def ler_ldr():
+    leitura = ldr.read()
+    luminosidade = 100 -round(leitura * 100 / 4095)
+    return luminosidade
 
 
 ########## sensor de temperatura
@@ -143,6 +154,42 @@ def ler_distancia():
     return distancia
 
 
+############################################# funcoes atuadores
+
+########## atuador de buzzer
+
+def ligar_buzzer(freq=440):
+    buzzer.freq(freq)
+    buzzer.duty(512)
+
+
+def desligar_buzzer():
+    buzzer.duty(0)
+
+def beep(duracao=0.2, freq=440, repeat=1):
+    for i in range(repeat):
+        ligar_buzzer(freq)
+        time.sleep(duracao)
+        desligar_buzzer()
+
+
+########## atuador rele
+
+def ligar_rele():
+    rele.value(1)
+
+def desligar_rele():
+    rele.value(0)
+
+
+
+
+
+
+
+
+
+
 ########## lcd
 
 def mostrar_lcd(linha1, linha2=""):
@@ -163,9 +210,13 @@ def tela_temperatura():
 def tela_distancia():
     mostrar_lcd("Distancia:", str(ler_distancia()) + " cm")
 
+def tela_luz():
+    mostrar_lcd("Luminosidade:", str(ler_ldr()) + "%")
+
 telas = {
     48: tela_temperatura, # botao 1
     24: tela_distancia,   # 2
+    122: tela_luz,        # 3
 }
 
 
@@ -179,4 +230,6 @@ while True:
     if tela_atual in telas:
         telas[tela_atual]()
 
+    time.sleep(2)
+    desligar_buzzer()
     time.sleep(1)
