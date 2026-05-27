@@ -83,3 +83,19 @@ def receber_sinal(cmd, addr, ctrl):
     print("botao IR:", cmd)
 
 ir_receiver = NEC_8(ir, receber_sinal)
+
+
+########## wifi
+
+import network
+
+def conectar_wifi(nome, senha):
+    wifi = network.WLAN(network.STA_IF)
+    wifi.active(True)
+    wifi.connect(nome, senha)
+    print("conectando ao wifi...")
+    while not wifi.isconnected():
+        time.sleep(0.5)
+    print("conectado:", wifi.ifconfig()[0])
+
+conectar_wifi("Wokwi-GUEST", "")
