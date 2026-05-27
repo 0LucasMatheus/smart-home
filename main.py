@@ -11,7 +11,7 @@ ntc_pin    = 39
 trig_pin   = 4
 echo_pin   = 5
 ldr_pin    = 35
-ir_pin     = 34
+sinalVermelho_pin     = 34
 
 # 4 atuadores
 buzzer_pin = 18
@@ -44,7 +44,7 @@ echo = Pin(echo_pin, Pin.IN)
 ldr = ADC(Pin(ldr_pin))
 ldr.atten(ADC.ATTN_11DB)
 
-ir = Pin(ir_pin, Pin.IN)
+sinalVermelho = Pin(sinalVermelho_pin, Pin.IN)
 
 # atuadores
 buzzer = PWM(Pin(buzzer_pin), freq=440)
@@ -79,10 +79,20 @@ lcd = GpioLcd(
 
 # IR - infravermelho
 
-def receber_sinal(cmd, addr, ctrl):
-    print("botao IR:", cmd)
+ultimo_sinalVermelho = None
 
-ir_receiver = NEC_8(ir, receber_sinal)
+def receber_sinal(cmd, addr, ctrl):
+    global ultimo_sinalVermelho
+    if cmd >= 0:
+        ultimo_sinalVermelho = cmd
+        print("botao IR:", cmd)
+
+sinalVermelho_receiver = NEC_8(sinalVermelho, receber_sinal)
+
+def ler_sinalVermelho():
+    global ultimo_sinalVermelho
+    cmd = ultimo_sinalVermelho
+    return cmd
 
 
 ########## wifi
@@ -99,6 +109,21 @@ def conectar_wifi(nome, senha):
     print("conectado:", wifi.ifconfig()[0])
 
 conectar_wifi("Wokwi-GUEST", "")
+
+
+########## sensor de temperatura
+
+import math
+
+def ler_temperatura():
+    leitura = ntc.read()
+    if leitura == 0:
+        return 0
+    voltagem = leitura * 3.3 / 4095
+    r_ntc = 10000 * voltagem / (3.3 - voltagem)
+    temp = 1 / (1/298.15 + (1/3950) * math.log(r_ntc / 10000))
+    temp = temp - 273.15
+    return round(temp, 1)
 
 
 ########## sensor de distancia
@@ -126,11 +151,32 @@ def mostrar_lcd(linha1, linha2=""):
     lcd.putstr(linha1[:16])
     lcd.move_to(0, 1)
     lcd.putstr(linha2[:16])
+    
+    
+########## telas
+
+tela_atual = 48
+
+def tela_temperatura():
+    mostrar_lcd("Temperatura:", str(ler_temperatura()) + " C")
+
+def tela_distancia():
+    mostrar_lcd("Distancia:", str(ler_distancia()) + " cm")
+
+telas = {
+    48: tela_temperatura, # botao 1
+    24: tela_distancia,   # 2
+}
 
 
 ########## loop principal
 
 while True:
-    dist = ler_distancia()
-    mostrar_lcd(f"Distancia: {dist} cm")
+    cmd = ler_sinalVermelho()
+    if cmd in telas:
+        tela_atual = cmd
+
+    if tela_atual in telas:
+        telas[tela_atual]()
+
     time.sleep(1)

@@ -70,7 +70,7 @@
       "rotate": 90,
       "attrs": { "hornColor": "#20e67c90" }
     },
-    { "type": "wokwi-ir-remote", "id": "remote1", "top": 393.6, "left": 124.8, "attrs": {} },
+    { "type": "wokwi-ir-remote", "id": "remote1", "top": -336, "left": 307.2, "attrs": {} },
     {
       "type": "wokwi-led",
       "id": "led1",
@@ -124,9 +124,8 @@
     [ "bb1:32b.j", "bb1:bn.26", "black", [ "v0" ] ],
     [ "esp:4", "bb1:30b.j", "violet", [ "h38.4", "v182.4", "h326.4" ] ],
     [ "bb1:44b.i", "bb1:bn.36", "black", [ "v0" ] ],
-    [ "bb1:43b.j", "bb1:bp.35", "red", [ "v0" ] ],
     [ "bb1:42b.j", "esp:VN", "magenta", [ "v134.4", "h-624", "v-240" ] ],
-    [ "bz1:2", "esp:18", "cyan", [ "v105.6", "h-250", "v-153.6" ] ],
+    [ "bz1:2", "esp:18", "limegreen", [ "v105.6", "h-250", "v-153.6" ] ],
     [ "relay1:GND", "bb1:tn.6", "black", [ "h57.6", "v96.5" ] ],
     [ "relay1:VCC", "bb1:tp.5", "red", [ "h9.6" ] ],
     [ "relay1:IN", "esp:13", "cyan", [ "v-28.6", "h-268.8", "v268.8" ] ],
@@ -163,9 +162,6 @@
     [ "rtc1:SDA", "esp:33", "gold", [ "h0" ] ],
     [ "rtc1:5V", "bb1:bp.2", "red", [ "h9.6", "v134.8", "h288.8" ] ],
     [ "rtc1:GND", "bb1:bn.3", "black", [ "h9.6", "v124.8", "h297.6", "v-37.1" ] ],
-    [ "ir1:GND", "bb1:3t.b", "", [ "$bb" ] ],
-    [ "ir1:VCC", "bb1:2t.b", "", [ "$bb" ] ],
-    [ "ir1:DAT", "bb1:1t.b", "", [ "$bb" ] ],
     [ "ultrasonic1:VCC", "bb1:29b.h", "", [ "$bb" ] ],
     [ "ultrasonic1:TRIG", "bb1:30b.h", "", [ "$bb" ] ],
     [ "ultrasonic1:ECHO", "bb1:31b.h", "", [ "$bb" ] ],
@@ -185,7 +181,11 @@
     [ "ldr1:VCC", "bb1:11t.c", "", [ "$bb" ] ],
     [ "ldr1:GND", "bb1:12t.c", "", [ "$bb" ] ],
     [ "ldr1:DO", "bb1:13t.c", "", [ "$bb" ] ],
-    [ "ldr1:AO", "bb1:14t.c", "", [ "$bb" ] ]
+    [ "ldr1:AO", "bb1:14t.c", "", [ "$bb" ] ],
+    [ "ir1:GND", "bb1:3t.b", "", [ "$bb" ] ],
+    [ "ir1:VCC", "bb1:2t.b", "", [ "$bb" ] ],
+    [ "ir1:DAT", "bb1:1t.b", "", [ "$bb" ] ],
+    [ "bb1:43b.j", "esp:3V3", "red", [ "v153.6", "h-643.2", "v-249.6" ] ]
   ],
   "dependencies": {}
 }
