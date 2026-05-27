@@ -156,7 +156,7 @@ def ler_distancia():
 
 ############################################# funcoes atuadores
 
-########## atuador de buzzer
+########## buzzer
 
 def ligar_buzzer(freq=440):
     buzzer.freq(freq)
@@ -171,6 +171,64 @@ def beep(duracao=0.2, freq=440, repeat=1):
         ligar_buzzer(freq)
         time.sleep(duracao)
         desligar_buzzer()
+
+
+########## servo
+
+def mover_servo(angulo):
+    if angulo < 0:
+        angulo = 0
+    if angulo > 180:
+        angulo = 180
+    duty = int(40 + (angulo / 180) * 75) # ajuste para 0-180 graus +ou-
+    servo.duty(duty)
+
+def fechar_servo():
+    mover_servo(0)
+
+def abrir_servo():
+    mover_servo(180)
+
+
+########## motor de passo
+
+sequencia = [
+    [1, 0, 1, 0],
+    [0, 1, 1, 0],
+    [0, 1, 0, 1],
+    [1, 0, 0, 1],
+]
+
+pinos_motor = [mot1, mot2, mot3, mot4]
+passo_atual = 0
+
+def girar_motor(lado, velocidade):
+    global passo_atual
+    # velocidade de 20 a 100
+    if velocidade < 20:
+        velocidade = 20
+    if velocidade > 100:
+        velocidade = 100
+    delay = int(22 - (velocidade / 100) * 20)
+    
+    
+    if lado == 0:
+        passo_atual = passo_atual + 1
+        if passo_atual > 3:
+            passo_atual = 0
+
+    if lado == 1:
+        if passo_atual == 0:
+            passo_atual = 3
+        else:
+            passo_atual = passo_atual - 1
+    for i in range(4):
+        pinos_motor[i].value(sequencia[passo_atual][i])
+    time.sleep_ms(delay)
+
+def parar_motor():
+    for p in pinos_motor:
+        p.value(0)
 
 
 ########## atuador rele
@@ -222,14 +280,47 @@ telas = {
 
 ########## loop principal
 
+motor_ligado = False
+velocidade_motor = 20
+direcao_motor = 0
+
+ultimo_lcd = time.ticks_ms()
+
 while True:
+    agora = time.ticks_ms()
     cmd = ler_sinalVermelho()
+
     if cmd in telas:
         tela_atual = cmd
 
-    if tela_atual in telas:
-        telas[tela_atual]()
+    if cmd == 2:
+        if not motor_ligado or direcao_motor != 0:
+            direcao_motor = 0
+            velocidade_motor = 20
+        else:
+            velocidade_motor = velocidade_motor + 20
+            if velocidade_motor > 100:
+                velocidade_motor = 100
+        motor_ligado = True
 
-    time.sleep(2)
-    desligar_buzzer()
-    time.sleep(1)
+    if cmd == 152:
+        if not motor_ligado or direcao_motor != 1:
+            direcao_motor = 1
+            velocidade_motor = 20
+        else:
+            velocidade_motor = velocidade_motor + 20
+            if velocidade_motor > 100:
+                velocidade_motor = 100
+        motor_ligado = True
+
+    if cmd == 168:
+        motor_ligado = False
+        parar_motor()
+
+    if motor_ligado:
+        girar_motor(direcao_motor, velocidade_motor)
+
+    if time.ticks_diff(agora, ultimo_lcd) >= 1000:
+        if tela_atual in telas:
+            telas[tela_atual]()
+        ultimo_lcd = agora

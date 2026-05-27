@@ -24,5 +24,5 @@ baixe os arquivos abaixo e coloque dentro de uma pasta `lib/` na raiz do projeto
 3. com a simulacao rodando abra um segundo terminal e rode:
 
    ```
-   mpremote connect port:rfc2217://localhost:4000 fs mkdir :lib + fs cp lib/ds1307.py :lib/ds1307.py + fs cp lib/esp32_gpio_lcd.py :lib/esp32_gpio_lcd.py + fs cp lib/lcd_api.py :lib/lcd_api.py + fs cp lib/ir_rx.py :lib/ir_rx.py + fs cp lib/nec.py :lib/nec.py + run main.py
+   mpremote connect port:rfc2217://localhost:4000 exec "import os; 'lib' not in os.listdir() and os.mkdir('lib')" + fs cp lib/ds1307.py :lib/ds1307.py + fs cp lib/esp32_gpio_lcd.py :lib/esp32_gpio_lcd.py + fs cp lib/lcd_api.py :lib/lcd_api.py + fs cp lib/ir_rx.py :lib/ir_rx.py + fs cp lib/nec.py :lib/nec.py + run main.py
    ```
