@@ -99,3 +99,38 @@ def conectar_wifi(nome, senha):
     print("conectado:", wifi.ifconfig()[0])
 
 conectar_wifi("Wokwi-GUEST", "")
+
+
+########## sensor de distancia
+
+def ler_distancia():
+    trig.value(0)
+    time.sleep_us(2)
+    trig.value(1)
+    time.sleep_us(10)
+    trig.value(0)
+
+    duracao = time_pulse_us(echo, 1, 30000)
+    if duracao < 0:
+        return -1
+
+    distancia = duracao // 58
+    return distancia
+
+
+########## lcd
+
+def mostrar_lcd(linha1, linha2=""):
+    lcd.clear()
+    lcd.move_to(0, 0)
+    lcd.putstr(linha1[:16])
+    lcd.move_to(0, 1)
+    lcd.putstr(linha2[:16])
+
+
+########## loop principal
+
+while True:
+    dist = ler_distancia()
+    mostrar_lcd(f"Distancia: {dist} cm")
+    time.sleep(1)
