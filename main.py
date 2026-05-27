@@ -111,6 +111,7 @@ sinalVermelho_receiver = NEC_8(sinalVermelho, receber_sinal)
 def ler_sinalVermelho():
     global ultimo_sinalVermelho
     cmd = ultimo_sinalVermelho
+    ultimo_sinalVermelho = None
     return cmd
 
 
@@ -192,19 +193,18 @@ def abrir_servo():
 
 ########## motor de passo
 
-sequencia = [
+padroes = [
     [1, 0, 1, 0],
     [0, 1, 1, 0],
     [0, 1, 0, 1],
     [1, 0, 0, 1],
 ]
 
-pinos_motor = [mot1, mot2, mot3, mot4]
-passo_atual = 0
-passo_velocidade = 2
+padrao_atual = 0
+passo_velocidade = 10
 
 def girar_motor(lado, velocidade):
-    global passo_atual
+    global padrao_atual
     if velocidade < passo_velocidade:
         velocidade = passo_velocidade
     if velocidade > 100:
@@ -212,23 +212,28 @@ def girar_motor(lado, velocidade):
     delay = int(22 - (velocidade / 100) * 20)
     
     
-    if lado == 0:
-        passo_atual = passo_atual + 1
-        if passo_atual > 3:
-            passo_atual = 0
+    if lado == "horario":
+        padrao_atual = padrao_atual + 1
+        if padrao_atual > 3:
+            padrao_atual = 0
 
-    if lado == 1:
-        if passo_atual == 0:
-            passo_atual = 3
+    if lado == "anti":
+        if padrao_atual == 0:
+            padrao_atual = 3
         else:
-            passo_atual = passo_atual - 1
-    for i in range(4):
-        pinos_motor[i].value(sequencia[passo_atual][i])
+            padrao_atual = padrao_atual - 1
+            
+    mot1.value(padroes[padrao_atual][0])
+    mot2.value(padroes[padrao_atual][1])
+    mot3.value(padroes[padrao_atual][2])
+    mot4.value(padroes[padrao_atual][3])
     time.sleep_ms(delay)
 
 def parar_motor():
-    for p in pinos_motor:
-        p.value(0)
+    mot1.value(0)
+    mot2.value(0)
+    mot3.value(0)
+    mot4.value(0)
 
 
 ########## atuador rele
@@ -278,13 +283,50 @@ telas = {
 }
 
 
+########## mqtt
+
+import ujson
+from umqtt.simple import MQTTClient
+
+broker_url     = "faa537d2fa124d9fab4b43af033e4b18.s1.eu.hivemq.cloud"
+broker_porta   = 8883
+broker_usuario = "smart-home"
+broker_senha   = "SmartHome123"
+
+mqtt = MQTTClient(
+    client_id="esp32-smart-home",
+    server=broker_url,
+    port=broker_porta,
+    user=broker_usuario,
+    password=broker_senha,
+    ssl=True,
+    ssl_params={"server_hostname": broker_url}
+)
+mqtt.connect()
+print("mqtt conectado")
+
+def publicar_status():
+    dados = {
+        "temperatura": ler_temperatura(),
+        "distancia": ler_distancia(),
+        "luminosidade": ler_ldr(),
+        "tela": tela_atual,
+        "rele": rele.value(),
+        "motor_ligado": motor_ligado,
+        "velocidade_motor": velocidade_motor,
+        "direcao_motor": direcao_motor
+    }
+    mqtt.publish("smart-home/status", ujson.dumps(dados))
+
+
 ########## loop principal
 
 motor_ligado = False
 velocidade_motor = 20
-direcao_motor = 0
+direcao_motor = "horario"
 
-ultimo_lcd = time.ticks_ms()
+ultimo_lcd  = time.ticks_ms()
+ultimo_mqtt = time.ticks_ms()
 
 while True:
     agora = time.ticks_ms()
@@ -294,24 +336,26 @@ while True:
         tela_atual = cmd
 
     if cmd == 2:
-        if not motor_ligado or direcao_motor != 0:
-            direcao_motor = 0
+        if not motor_ligado or direcao_motor != "horario":
+            direcao_motor = "horario"
             velocidade_motor = passo_velocidade
         else:
             velocidade_motor = velocidade_motor + passo_velocidade
             if velocidade_motor > 100:
                 velocidade_motor = 100
         motor_ligado = True
+        print("motor: horario, velocidade:", velocidade_motor)
 
     if cmd == 152:
-        if not motor_ligado or direcao_motor != 1:
-            direcao_motor = 1
+        if not motor_ligado or direcao_motor != "anti":
+            direcao_motor = "anti"
             velocidade_motor = passo_velocidade
         else:
             velocidade_motor = velocidade_motor + passo_velocidade
             if velocidade_motor > 100:
                 velocidade_motor = 100
         motor_ligado = True
+        print("motor: anti-horario, velocidade:", velocidade_motor)
 
     if cmd == 168:
         motor_ligado = False
@@ -324,3 +368,7 @@ while True:
         if tela_atual in telas:
             telas[tela_atual]()
         ultimo_lcd = agora
+
+    if time.ticks_diff(agora, ultimo_mqtt) >= 5000:
+        publicar_status()
+        ultimo_mqtt = agora
