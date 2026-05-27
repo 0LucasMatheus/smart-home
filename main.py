@@ -201,12 +201,12 @@ sequencia = [
 
 pinos_motor = [mot1, mot2, mot3, mot4]
 passo_atual = 0
+passo_velocidade = 2
 
 def girar_motor(lado, velocidade):
     global passo_atual
-    # velocidade de 20 a 100
-    if velocidade < 20:
-        velocidade = 20
+    if velocidade < passo_velocidade:
+        velocidade = passo_velocidade
     if velocidade > 100:
         velocidade = 100
     delay = int(22 - (velocidade / 100) * 20)
@@ -296,9 +296,9 @@ while True:
     if cmd == 2:
         if not motor_ligado or direcao_motor != 0:
             direcao_motor = 0
-            velocidade_motor = 20
+            velocidade_motor = passo_velocidade
         else:
-            velocidade_motor = velocidade_motor + 20
+            velocidade_motor = velocidade_motor + passo_velocidade
             if velocidade_motor > 100:
                 velocidade_motor = 100
         motor_ligado = True
@@ -306,9 +306,9 @@ while True:
     if cmd == 152:
         if not motor_ligado or direcao_motor != 1:
             direcao_motor = 1
-            velocidade_motor = 20
+            velocidade_motor = passo_velocidade
         else:
-            velocidade_motor = velocidade_motor + 20
+            velocidade_motor = velocidade_motor + passo_velocidade
             if velocidade_motor > 100:
                 velocidade_motor = 100
         motor_ligado = True
