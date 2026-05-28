@@ -90,7 +90,7 @@ def conectar_wifi(nome, senha):
         time.sleep(0.5)
     print("conectado:", wifi.ifconfig()[0])
 
-conectar_wifi("Wokwi-GUEST", "")
+conectar_wifi("POCO X6 5G", "amarelo123")
 
 
 ########## rtc relogio
@@ -113,27 +113,21 @@ def sincronizar_rtc():
     print("rtc sincronizado")
 
 def ler_hora():
-    return rtc.datetime[4]
+    return time.localtime(time.time() + fuso_brasil * 3600)[3]
 
 def ler_minuto():
-    return rtc.datetime[5]
+    return time.localtime(time.time() + fuso_brasil * 3600)[4]
 
 def ler_segundo():
-    return rtc.datetime[6]
+    return time.localtime(time.time() + fuso_brasil * 3600)[5]
 
 def mostrar_hora():
-    hora = ler_hora()
-    minuto = ler_minuto()
-    segundo = ler_segundo()
-    hora_str = f"{hora:02d}:{minuto:02d}:{segundo:02d}"
-    return hora_str
+    t = time.localtime(time.time() + fuso_brasil * 3600)
+    return f"{t[3]:02d}:{t[4]:02d}:{t[5]:02d}"
 
 def mostrar_data():
-    ano = rtc.datetime[0]
-    mes = rtc.datetime[1]
-    dia = rtc.datetime[2]
-    data_str = f"{dia:02d}/{mes:02d}/{ano}"
-    return data_str
+    t = time.localtime(time.time() + fuso_brasil * 3600)
+    return f"{t[2]:02d}/{t[1]:02d}/{t[0]}"
 
 
 
@@ -367,16 +361,36 @@ print("mqtt conectado")
 
 def publicar_status():
     dados = {
-        "temperatura": ler_temperatura(),
-        "distancia": ler_distancia(),
-        "luminosidade": ler_ldr(),
-        "tela": tela_atual,
-        "rele": rele.value(),
-        "motor_ligado": motor_ligado,
-        "velocidade_motor": velocidade_motor,
-        "direcao_motor": direcao_motor
+       # "temperatura": ler_temperatura(),
+        "distancia": ler_distancia()
+      #  "luminosidade": ler_ldr(),
+      #  "tela": tela_atual,
+      #  "rele": rele.value(),
+      #  "motor_ligado": motor_ligado,
+      #  "velocidade_motor": velocidade_motor,
+      #  "direcao_motor": direcao_motor
     }
     mqtt.publish("smart-home/status", ujson.dumps(dados))
+
+def receber_comando(topico, mensagem):
+    cmd = mensagem.decode()
+
+    if cmd == "ligar_rele":
+        ligar_rele()
+    if cmd == "desligar_rele":
+        desligar_rele()
+    if cmd == "musica_alerta":
+        ligar_buzzer(40)
+        time.sleep(0.5)
+        ligar_buzzer(80)
+        time.sleep(0.5)
+        ligar_buzzer(160)
+        time.sleep(0.5)
+        desligar_buzzer()
+
+mqtt.set_callback(receber_comando)
+mqtt.subscribe("smart-home/comando")
+print("mqtt inscrito em smart-home/comando")
 
 
 ########## google sheets
@@ -424,30 +438,12 @@ def verificar_alertas():
     temp = ler_temperatura()
 
     # alerta 1 de movimento na porta durante a noite
-    if (dist > 0 and dist < 50) and (hora >= 20 or hora < 8) and movimento_registrado == False:
+    if (dist > 0 and dist < 50) and (hora >= 20 or hora < 19) and movimento_registrado == False:
         movimento_registrado = True
         verificar_sheets(f"alguem na porta: a {dist} cm detectada")
 
     if not (dist > 0 and dist < 50) and movimento_registrado == True:
         movimento_registrado = False
-
-    # alerta 2 de temperatura alta
-    if temp > 35 and temperatura_registrada == False:
-        temperatura_registrada = True
-        verificar_sheets(f"temperatura alta: {temp} C")
-
-    if temp <= 35 and temperatura_registrada == True:
-        temperatura_registrada = False
-
-    # alerta 3 de porta aberta
-    if angulo_servo > 0 and porta_aberta_registrada == False:
-        porta_aberta_registrada = True
-        verificar_sheets("porta aberta")
-
-    # alerta 4 de porta fechada
-    if angulo_servo == 0 and porta_aberta_registrada == True:
-        porta_aberta_registrada = False
-        verificar_sheets("porta fechada")
 
 
 ########## loop principal
@@ -468,56 +464,50 @@ ultimo_sheets = time.ticks_ms()
 
 
 while True:
-    agora = time.ticks_ms()
+    mqtt.check_msg()
     cmd = ler_sinalVermelho()
+    
+    def musica_alerta():
+        ligar_buzzer(40)
+        time.sleep(0.5)
+        ligar_buzzer(80)
+        time.sleep(0.5)
+        ligar_buzzer(160)
+        time.sleep(0.5)
+        desligar_buzzer()
+        time.sleep(1)
+    
 
-    if cmd in telas:
-        tela_atual = cmd
-
-    if cmd == 2:
-        if not motor_ligado or direcao_motor != "horario":
-            direcao_motor = "horario"
-            velocidade_motor = passo_velocidade
-        else:
-            velocidade_motor = velocidade_motor + passo_velocidade
-            if velocidade_motor > 100:
-                velocidade_motor = 100
-        motor_ligado = True
-        print("motor: horario, velocidade:", velocidade_motor)
-
-    if cmd == 152:
-        if not motor_ligado or direcao_motor != "anti":
-            direcao_motor = "anti"
-            velocidade_motor = passo_velocidade
-        else:
-            velocidade_motor = velocidade_motor + passo_velocidade
-            if velocidade_motor > 100:
-                velocidade_motor = 100
-        motor_ligado = True
-        print("motor: anti-horario, velocidade:", velocidade_motor)
-
-    if cmd == 168:
-        motor_ligado = False
-        parar_motor()
-
-    if motor_ligado:
-        girar_motor(direcao_motor, velocidade_motor)
-
-    if time.ticks_diff(agora, ultimo_lcd) >= 1000:
-        if tela_atual in telas:
-            telas[tela_atual]()
-        ultimo_lcd = agora
-
-    if time.ticks_diff(agora, ultimo_mqtt) >= 5000:
-        publicar_status()
-        ultimo_mqtt = agora
+    if cmd == 24:
+        ligar_rele()
+        print("rele ligado")
+        time.sleep(1)
+    
+    if cmd == 12:
+        desligar_rele()
+        print("rele desligado")
+        time.sleep(1)
+        
+    if cmd == 94:
+        musica_alerta()
+        print("musica alerta")
+        time.sleep(1)
+        
+    agora = time.ticks_ms()
 
     if time.ticks_diff(agora, ultimo_alerta) >= 5000:
         verificar_alertas()
         ultimo_alerta = agora
 
-    if time.ticks_diff(agora, ultimo_sheets) >= 10000:
+    if time.ticks_diff(agora, ultimo_mqtt) >= 5000:
+        publicar_status()
+        ultimo_mqtt = agora
+
+    if time.ticks_diff(agora, ultimo_sheets) >= 3000:
         if fila_sheets:
             alerta, data_hora = fila_sheets.pop(0)
             gravar_sheets(alerta, data_hora)
         ultimo_sheets = agora
+
+    print(f"dist: {ler_distancia()} cm")
+    time.sleep(0.1)
