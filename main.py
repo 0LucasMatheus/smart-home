@@ -31,7 +31,7 @@ lcd_rs   = 19
 lcd_en   = 21
 lcd_d4   = 22
 lcd_d5   = 23
-lcd_d6   = 0
+lcd_d6   = 16     
 lcd_d7   = 15
 
 # sensores
@@ -179,14 +179,20 @@ def ler_ldr():
 
 import math
 
-def ler_temperatura():
+# def ler_temperatura():    # wokwi - NTC
+#     leitura = ntc.read()
+#     if leitura == 0:
+#         return 0
+#     voltagem = leitura * 3.3 / 4095
+#     r_ntc = 10000 * voltagem / (3.3 - voltagem)
+#     temp = 1 / (1/298.15 + (1/3950) * math.log(r_ntc / 10000))
+#     temp = temp - 273.15
+#     return round(temp, 1)
+
+def ler_temperatura():    # fisico - LM35
     leitura = ntc.read()
-    if leitura == 0:
-        return 0
     voltagem = leitura * 3.3 / 4095
-    r_ntc = 10000 * voltagem / (3.3 - voltagem)
-    temp = 1 / (1/298.15 + (1/3950) * math.log(r_ntc / 10000))
-    temp = temp - 273.15
+    temp = voltagem * 100
     return round(temp, 1)
 
 
