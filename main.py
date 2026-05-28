@@ -103,6 +103,12 @@ def sincronizar_rtc():
     ntptime.settime()
     ano, mes, dia, hora, minuto, segundo, semana, dia_do_ano = time.localtime()
     hora = hora + fuso_brasil
+    if hora < 0:
+        hora = hora + 24
+        dia = dia - 1
+    if hora >= 24:
+        hora = hora - 24
+        dia = dia + 1
     rtc.datetime = (ano, mes, dia, semana, hora, minuto, segundo, 0)
     print("rtc sincronizado")
 
@@ -122,6 +128,13 @@ def mostrar_hora():
     hora_str = f"{hora:02d}:{minuto:02d}:{segundo:02d}"
     return hora_str
 
+def mostrar_data():
+    ano = rtc.datetime[0]
+    mes = rtc.datetime[1]
+    dia = rtc.datetime[2]
+    data_str = f"{dia:02d}/{mes:02d}/{ano}"
+    return data_str
+
 
 
 sincronizar_rtc()
@@ -129,7 +142,7 @@ print("hora:", ler_hora())
 print("minuto:", ler_minuto())
 print("segundo:", ler_segundo())
 print("hora formatada:", mostrar_hora())
-
+print("data formatada:", mostrar_data())
 
 
 
@@ -215,13 +228,17 @@ def beep(duracao=0.2, freq=440, repeat=1):
 
 ########## servo
 
+angulo_servo = 0
+
 def mover_servo(angulo):
+    global angulo_servo
     if angulo < 0:
         angulo = 0
     if angulo > 180:
         angulo = 180
-    duty = int(40 + (angulo / 180) * 75) # ajuste para 0-180 graus +ou-
-    servo.duty(duty)
+    angulo_servo = angulo
+    duty_angulo = int(40 + (angulo / 180) * 75) # ajuste para 0-180 graus +ou-
+    servo.duty(duty_angulo)
 
 def fechar_servo():
     mover_servo(0)
@@ -249,8 +266,6 @@ def girar_motor(lado, velocidade):
     if velocidade > 100:
         velocidade = 100
     delay = int(22 - (velocidade / 100) * 20)
-    
-    
     if lado == "horario":
         padrao_atual = padrao_atual + 1
         if padrao_atual > 3:
@@ -358,14 +373,93 @@ def publicar_status():
     mqtt.publish("smart-home/status", ujson.dumps(dados))
 
 
+########## google sheets
+
+import urequests
+
+sheets_url = "https://script.google.com/macros/s/AKfycbx4GYj-LygLNYQT-0gMAhGATHjXbs72zttV_7zSwhO9OhBsiYko8-5nupR4tRDrLTwc/exec"
+
+fila_sheets = []
+
+def gravar_sheets(alerta, data_hora):
+    import gc
+    gc.collect()
+    linhas = [
+        {"item": "Alerta",    "valor": f"alerta: {alerta} hora: {data_hora}"},
+        {"item": "sensores",  "valor": f"temperatura: {ler_temperatura()} C || distancia: {ler_distancia()} cm || luminosidade: {ler_ldr()} %"},
+        {"item": "---------------------", "valor": "------------------"},
+    ]
+    headers = {"Content-Type": "application/json"}
+    corpo = ujson.dumps(linhas)
+    try:
+        r = urequests.post(sheets_url, data=corpo, headers=headers)
+        r.close()
+        print("sheets: ok")
+    except Exception as e:
+        print("sheets erro:", e)
+
+def verificar_sheets(alerta):
+    data_hora = mostrar_data() + " " + mostrar_hora()
+    fila_sheets.append((alerta, data_hora))
+    print("fila sheets:", alerta)
+
+
+####### alertas
+
+porta_aberta_registrada = False
+movimento_registrado    = False
+temperatura_registrada  = False
+
+def verificar_alertas():
+    global porta_aberta_registrada, movimento_registrado, temperatura_registrada
+
+    hora = ler_hora()
+    dist = ler_distancia()
+    temp = ler_temperatura()
+
+    # alerta 1 de movimento na porta durante a noite
+    if (dist > 0 and dist < 50) and (hora >= 20 or hora < 8) and movimento_registrado == False:
+        movimento_registrado = True
+        verificar_sheets(f"alguem na porta: a {dist} cm detectada")
+
+    if not (dist > 0 and dist < 50) and movimento_registrado == True:
+        movimento_registrado = False
+
+    # alerta 2 de temperatura alta
+    if temp > 35 and temperatura_registrada == False:
+        temperatura_registrada = True
+        verificar_sheets(f"temperatura alta: {temp} C")
+
+    if temp <= 35 and temperatura_registrada == True:
+        temperatura_registrada = False
+
+    # alerta 3 de porta aberta
+    if angulo_servo > 0 and porta_aberta_registrada == False:
+        porta_aberta_registrada = True
+        verificar_sheets("porta aberta")
+
+    # alerta 4 de porta fechada
+    if angulo_servo == 0 and porta_aberta_registrada == True:
+        porta_aberta_registrada = False
+        verificar_sheets("porta fechada")
+
+
 ########## loop principal
 
 motor_ligado = False
 velocidade_motor = 20
 direcao_motor = "horario"
 
-ultimo_lcd  = time.ticks_ms()
-ultimo_mqtt = time.ticks_ms()
+ultimo_lcd    = time.ticks_ms()
+ultimo_mqtt   = time.ticks_ms()
+ultimo_alerta = time.ticks_ms()
+ultimo_sheets = time.ticks_ms()
+
+
+
+
+
+
 
 while True:
     agora = time.ticks_ms()
@@ -411,3 +505,13 @@ while True:
     if time.ticks_diff(agora, ultimo_mqtt) >= 5000:
         publicar_status()
         ultimo_mqtt = agora
+
+    if time.ticks_diff(agora, ultimo_alerta) >= 5000:
+        verificar_alertas()
+        ultimo_alerta = agora
+
+    if time.ticks_diff(agora, ultimo_sheets) >= 10000:
+        if fila_sheets:
+            alerta, data_hora = fila_sheets.pop(0)
+            gravar_sheets(alerta, data_hora)
+        ultimo_sheets = agora
